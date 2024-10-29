@@ -1,0 +1,170 @@
+﻿FUNCTION "HMAC-SHA256" : Void
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      message : String;
+      key : String;
+   END_VAR
+
+   VAR_OUTPUT 
+      result : String;
+   END_VAR
+
+   VAR_TEMP 
+      error : Bool;
+      K : Struct   // keydata
+         bytes : Array[1..64] of Byte;
+         str : String;
+         length : Int;
+         sha256 : String;
+         stringToCharsCnt : UInt;
+      END_STRUCT;
+      leftBytes : Array[1..64] of Byte;
+      rightBytes : Array[1..64] of Byte;
+      rightBytesSHA : Array[1..32] of Byte;
+      middleBytes : Array[1..96] of Byte;
+      rightStr : String;
+      middleStr : String[96];
+      cnt : Int;
+      tempString : String;
+      tempWord : Word;
+      tempInt : Int;
+   END_VAR
+
+   VAR CONSTANT 
+      blocklength : Int := 64;   // 64 Byte / 512 Bit
+      charOpad : Byte := 16#5c;
+      charIpad : Byte := 16#36;
+   END_VAR
+
+
+BEGIN
+	REGION License and Information
+	(*
+	██╗  ██╗███╗   ███╗ █████╗  ██████╗    ███████╗██╗  ██╗ █████╗ ██████╗ ███████╗ ██████╗               ██████╗ ██╗      ██████╗
+	██║  ██║████╗ ████║██╔══██╗██╔════╝    ██╔════╝██║  ██║██╔══██╗╚════██╗██╔════╝██╔════╝               ██╔══██╗██║     ██╔════╝
+	███████║██╔████╔██║███████║██║         ███████╗███████║███████║ █████╔╝███████╗███████╗     █████╗    ██████╔╝██║     ██║     
+	██╔══██║██║╚██╔╝██║██╔══██║██║         ╚════██║██╔══██║██╔══██║██╔═══╝ ╚════██║██╔═══██╗    ╚════╝    ██╔═══╝ ██║     ██║     
+	██║  ██║██║ ╚═╝ ██║██║  ██║╚██████╗    ███████║██║  ██║██║  ██║███████╗███████║╚██████╔╝              ██║     ███████╗╚██████╗
+	╚═╝  ╚═╝╚═╝     ╚═╝╚═╝  ╚═╝ ╚═════╝    ╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝╚══════╝ ╚═════╝               ╚═╝     ╚══════╝ ╚═════╝                                                                  
+	====================================================================================================================
+	MIT License
+	Copyright (C) 2024  Marvin Mangold (Marvin.Mangold00@googlemail.com)
+	Permission is hereby granted, free of charge, to any person obtaining a copy
+	of this software and associated documentation files (the "Software"), to deal
+	in the Software without restriction, including without limitation the rights
+	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the Software is
+	furnished to do so, subject to the following conditions:
+	
+	The above copyright notice and this permission notice shall be included in all
+	copies or substantial portions of the Software.
+	
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	SOFTWARE.
+	====================================================================================================================
+	In cryptography, an HMAC (sometimes expanded as either keyed-hash message authentication code or hash-based message authentication code)
+	is a specific type of message authentication code (MAC) involving a cryptographic hash function and a secret cryptographic key.
+	HMAC can provide authentication using a shared secret instead of using digital signatures with asymmetric cryptography.
+	Any cryptographic hash function, such as SHA-2 or SHA-3, may be used in the calculation of an HMAC; 
+	the resulting MAC algorithm is termed HMAC-x, where x is the hash function used (e.g. HMAC-SHA256 or HMAC-SHA3-512).
+	HMAC does not encrypt the message. Instead, the message (encrypted or not) must be sent alongside the HMAC hash. 
+	Parties with the secret key will hash the message again themselves, and if it is authentic, the received and computed hashes will match. 
+	
+	HMAC-SHA256 = SHA256( ( K XOR opad ) <concat> SHA256( ( K XOR ipad ) <concat> M ) )
+	
+	Step 1: Initialise
+	Step 2: Check Inputs
+	Step 3: Convert and save key in K as Bytes
+	Step 4: Compute left part of function
+	Step 5: Compute right part of function
+	Step 6: Compute result
+	====================================================================================================================    
+	*)
+	END_REGION
+	
+	REGION Step 0: Initialise
+	    FOR #cnt := 1 TO #blocklength DO
+	        #K.bytes[#cnt] := B#00;
+	        #leftBytes[#cnt] := B#00;
+	        #rightBytes[#cnt] := B#00;
+	    END_FOR;
+	    
+	    FOR #cnt := 1 TO 32 DO
+	        #rightBytesSHA[#cnt] := B#00;
+	    END_FOR;
+	    
+	    FOR #cnt := 1 TO 96 DO
+	        #middleBytes[#cnt] := B#00;
+	    END_FOR;
+	END_REGION
+	
+	REGION Step 1: Check Inputs
+	    #error := FALSE;
+	    IF LEN(#key) <= 0 THEN #error := TRUE; END_IF;
+	    IF LEN(#message) <= 0 THEN #error := TRUE; END_IF;
+	    IF LEN(#message) > 189 THEN #error := TRUE; END_IF;
+	END_REGION
+	
+	IF NOT #error THEN
+	    REGION Step 2: Convert and save key in K as Bytes
+	        // save key in K (if K > 64 Bytes Then first do SHA256(Key))
+	        #K.str := #key;
+	        #K.length := LEN(IN := #K.str);
+	        
+	        FOR #cnt := 1 TO #blocklength DO
+	            #K.bytes[#cnt] := B#00;
+	        END_FOR;
+	        
+	        IF #K.length <= #blocklength THEN
+	            // do nothing, just copy
+	            FOR #cnt := 1 TO #K.length DO
+	                #K.bytes[#cnt] := #K.str[#cnt];
+	            END_FOR;
+	        ELSIF #K.length > #blocklength THEN
+	            // SHA256(Key)
+	            "SHA256"(message := #K.str, digest => #tempString, hexdigest => #K.str);
+	            #tempWord := ATH(IN:=#K.str, N:=64, OUT=>#K.bytes);
+	        END_IF;
+	    END_REGION
+	    
+	    REGION Step 3: Compute left part of function
+	        // ( K XOR opad )
+	        FOR #cnt := 1 TO 64 DO
+	            #leftBytes[#cnt] := #K.bytes[#cnt] XOR #charOpad;
+	        END_FOR;
+	    END_REGION
+	    
+	    REGION Step 4: Compute right part of function
+	        // SHA256( ( K XOR ipad ) <concat> M )
+	        FOR #cnt := 1 TO 64 DO
+	            #rightBytes[#cnt] := #K.bytes[#cnt] XOR #charIpad;
+	            #rightStr[#cnt] := #rightBytes[#cnt];
+	        END_FOR;
+	        
+	        #rightStr := CONCAT_STRING(IN1:=#rightStr,IN2:=#message);
+	        "SHA256"(message := #rightStr, digest => #tempString, hexdigest => #rightStr);
+	        #tempWord := ATH(IN:=#rightStr, N:=64, OUT=>#rightBytesSHA);
+	    END_REGION
+	END_IF;
+	
+	REGION Step 5: Compute result
+	    IF NOT #error THEN
+	        // SHA256( leftString <concat> rightString )
+	        #tempInt := MOVE_BLK_VARIANT(SRC:=#leftBytes, COUNT:=64, SRC_INDEX:=0, DEST_INDEX:=0, DEST=>#middleBytes);
+	        #tempInt := MOVE_BLK_VARIANT(SRC:=#rightBytesSHA, COUNT:=32, SRC_INDEX:=0, DEST_INDEX:=64, DEST=>#middleBytes);
+	        FOR #cnt := 1 TO 96 DO
+	            #middleStr[#cnt] := #middleBytes[#cnt];
+	        END_FOR;
+	        "SHA256"(message := #middleStr, digest => #tempString, hexdigest => #result);
+	    ELSE
+	        #result := '';
+	    END_IF;
+	END_REGION
+END_FUNCTION
+
