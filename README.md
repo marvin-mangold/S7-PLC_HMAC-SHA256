@@ -15,3 +15,5 @@ Parties with the secret key will hash the message again themselves, and if it is
 	- Step 03: Compute left part of function
 	- Step 04: Compute right part of function
 	- Step 05: Compute result
+ 
+![HMAC_SHA256](https://github.com/user-attachments/assets/b7faeb35-d679-4b4c-a509-cba352638f12)
