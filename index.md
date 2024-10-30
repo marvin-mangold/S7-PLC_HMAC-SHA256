@@ -1,26 +1,14 @@
-# S7-PLC_SHA1
-## SHA1 encryption FC for Siemens PLC S7-1200 and S7-1500
+# S7-PLC_HMAC-SHA256
+## HMAC-SHA256 FC for Siemens PLC S7-1200 and S7-1500
 
-Sha1 is an cryptographic algorithm that takes a string of any length and reduces it to a unique fixed length string. 
-In this implmementation the string length is limited to a maximum length of 254 characters (String[254] - 2032 bit).
-The digest ouput is the final hash value as a string of H1 - H4 (20 bytes string).
-The hexdigest output is the final hash value as a hexadecimal string of H1 - H4 (40 bytes string).
-For further informations take a look at RFC 3174.
-Sha1 is not considered anymore as a secure hash type!
-	
-	- Step 00: Initialize variables H0 - H4
-	- Step 01: Convert message to Bytes
-	- Step 02: Appending padding Bits
-	- Step 03: Append 64 Bit containg the original message length in Bits
-	- Step 04: Get the amount of chunks data (chunk = 512 Bit)
-	- FOR every chunk do Step 05 - Step 09:
-	    - Step 05: Break the chunk into 16 DWords
-	    - Step 06: Extend chunk to 80 DWords
-	    - Step 07: Initialize variables A - E
-	    - Step 08: Do some bitwise operations on the 80 chunk DWords
-	    - Step 09: Save the chunk's hash to result for the next chunk
-	- Step 10: Produce "digest"
-	- Step 11: Produce "hexdigest"!
-  
+In cryptography, an HMAC (sometimes expanded as either keyed-hash message authentication code or hash-based message authentication code)
+is a specific type of message authentication code (MAC) involving a cryptographic hash function and a secret cryptographic key.
+HMAC can provide authentication using a shared secret instead of using digital signatures with asymmetric cryptography.
+Any cryptographic hash function, such as SHA-2 or SHA-3, may be used in the calculation of an HMAC; 
+the resulting MAC algorithm is termed HMAC-x, where x is the hash function used (e.g. HMAC-SHA256 or HMAC-SHA3-512).
+HMAC does not encrypt the message. Instead, the message (encrypted or not) must be sent alongside the HMAC hash. 
+Parties with the secret key will hash the message again themselves, and if it is authentic, the received and computed hashes will match.
 
-![SHA1](https://user-images.githubusercontent.com/10088323/134802780-d020f70d-ecf6-48f8-a440-ae78735d4444.JPG)
+HMAC-SHA256 = SHA256( ( K XOR opad ) <concat> SHA256( ( K XOR ipad ) <concat> M ) )
+ 
+![HMAC_SHA256](https://github.com/user-attachments/assets/b7faeb35-d679-4b4c-a509-cba352638f12)
