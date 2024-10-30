@@ -9,11 +9,6 @@ the resulting MAC algorithm is termed HMAC-x, where x is the hash function used 
 HMAC does not encrypt the message. Instead, the message (encrypted or not) must be sent alongside the HMAC hash. 
 Parties with the secret key will hash the message again themselves, and if it is authentic, the received and computed hashes will match.
 
-	- Step 00: Initialise
-	- Step 01: Check Inputs
-	- Step 02: Convert and save key in K as Bytes
-	- Step 03: Compute left part of function
-	- Step 04: Compute right part of function
-	- Step 05: Compute result
+HMAC-SHA256 = SHA256( ( K XOR opad ) <concat> SHA256( ( K XOR ipad ) <concat> M ) )
  
 ![HMAC_SHA256](https://github.com/user-attachments/assets/b7faeb35-d679-4b4c-a509-cba352638f12)
