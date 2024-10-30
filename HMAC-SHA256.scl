@@ -20,21 +20,13 @@ VERSION : 0.1
          stringToCharsCnt : UInt;
       END_STRUCT;
       leftBytes : Array[1..64] of Byte;
-      rightBytes : Array[1..64] of Byte;
-      rightBytesSHA : Array[1..32] of Byte;
-      middleBytes : Array[1..96] of Byte;
+      rightBytes : Array[1..32] of Byte;
       rightStr : String;
       middleStr : String[96];
       cnt : Int;
       tempString : String;
       tempWord : Word;
       tempInt : Int;
-   END_VAR
-
-   VAR CONSTANT 
-      blocklength : Int := 64;   // 64 Byte / 512 Bit
-      charOpad : Byte := 16#5c;
-      charIpad : Byte := 16#36;
    END_VAR
 
 
@@ -78,33 +70,11 @@ BEGIN
 	
 	HMAC-SHA256 = SHA256( ( K XOR opad ) <concat> SHA256( ( K XOR ipad ) <concat> M ) )
 	
-	Step 1: Initialise
-	Step 2: Check Inputs
-	Step 3: Convert and save key in K as Bytes
-	Step 4: Compute left part of function
-	Step 5: Compute right part of function
-	Step 6: Compute result
 	====================================================================================================================    
 	*)
 	END_REGION
 	
-	REGION Step 0: Initialise
-	    FOR #cnt := 1 TO #blocklength DO
-	        #K.bytes[#cnt] := B#00;
-	        #leftBytes[#cnt] := B#00;
-	        #rightBytes[#cnt] := B#00;
-	    END_FOR;
-	    
-	    FOR #cnt := 1 TO 32 DO
-	        #rightBytesSHA[#cnt] := B#00;
-	    END_FOR;
-	    
-	    FOR #cnt := 1 TO 96 DO
-	        #middleBytes[#cnt] := B#00;
-	    END_FOR;
-	END_REGION
-	
-	REGION Step 1: Check Inputs
+	REGION Check Inputs
 	    #error := FALSE;
 	    IF LEN(#key) <= 0 THEN #error := TRUE; END_IF;
 	    IF LEN(#message) <= 0 THEN #error := TRUE; END_IF;
@@ -112,59 +82,60 @@ BEGIN
 	END_REGION
 	
 	IF NOT #error THEN
-	    REGION Step 2: Convert and save key in K as Bytes
+	    REGION Convert and save key in K as Bytes
 	        // save key in K (if K > 64 Bytes Then first do SHA256(Key))
 	        #K.str := #key;
 	        #K.length := LEN(IN := #K.str);
 	        
-	        FOR #cnt := 1 TO #blocklength DO
-	            #K.bytes[#cnt] := B#00;
-	        END_FOR;
-	        
-	        IF #K.length <= #blocklength THEN
-	            // do nothing, just copy
+	        IF #K.length <= 64 THEN
+	            // copy
 	            FOR #cnt := 1 TO #K.length DO
 	                #K.bytes[#cnt] := #K.str[#cnt];
 	            END_FOR;
-	        ELSIF #K.length > #blocklength THEN
+	            // fill
+	            FOR #cnt := #K.length + 1 TO 64 DO
+	                #K.bytes[#cnt] :=  B#00;
+	            END_FOR;
+	        ELSIF #K.length > 64 THEN
 	            // SHA256(Key)
 	            "SHA256"(message := #K.str, digest => #tempString, hexdigest => #K.str);
 	            #tempWord := ATH(IN:=#K.str, N:=64, OUT=>#K.bytes);
+	            // fill
+	            FOR #cnt := 33 TO 64 DO
+	                #K.bytes[#cnt] :=  B#00;
+	            END_FOR;
 	        END_IF;
 	    END_REGION
 	    
-	    REGION Step 3: Compute left part of function
-	        // ( K XOR opad )
+	    REGION XOR ipad and opad       
 	        FOR #cnt := 1 TO 64 DO
-	            #leftBytes[#cnt] := #K.bytes[#cnt] XOR #charOpad;
+	            // ( K XOR opad )
+	            #leftBytes[#cnt] := #K.bytes[#cnt] XOR 16#5c;
+	            // ( K XOR ipad )
+	            #rightStr[#cnt] := #K.bytes[#cnt] XOR 16#36;
 	        END_FOR;
 	    END_REGION
 	    
-	    REGION Step 4: Compute right part of function
+	    REGION Compute right part of function
 	        // SHA256( ( K XOR ipad ) <concat> M )
-	        FOR #cnt := 1 TO 64 DO
-	            #rightBytes[#cnt] := #K.bytes[#cnt] XOR #charIpad;
-	            #rightStr[#cnt] := #rightBytes[#cnt];
-	        END_FOR;
-	        
 	        #rightStr := CONCAT_STRING(IN1:=#rightStr,IN2:=#message);
 	        "SHA256"(message := #rightStr, digest => #tempString, hexdigest => #rightStr);
-	        #tempWord := ATH(IN:=#rightStr, N:=64, OUT=>#rightBytesSHA);
+	        #tempWord := ATH(IN:=#rightStr, N:=64, OUT=>#rightBytes);
 	    END_REGION
-	END_IF;
-	
-	REGION Step 5: Compute result
-	    IF NOT #error THEN
+	    
+	    REGION Compute result
 	        // SHA256( leftString <concat> rightString )
-	        #tempInt := MOVE_BLK_VARIANT(SRC:=#leftBytes, COUNT:=64, SRC_INDEX:=0, DEST_INDEX:=0, DEST=>#middleBytes);
-	        #tempInt := MOVE_BLK_VARIANT(SRC:=#rightBytesSHA, COUNT:=32, SRC_INDEX:=0, DEST_INDEX:=64, DEST=>#middleBytes);
 	        FOR #cnt := 1 TO 96 DO
-	            #middleStr[#cnt] := #middleBytes[#cnt];
+	            IF #cnt <= 64 THEN
+	                #middleStr[#cnt] := #leftBytes[#cnt];
+	            ELSE
+	                #middleStr[#cnt] := #rightBytes[#cnt - 64];
+	            END_IF;
 	        END_FOR;
 	        "SHA256"(message := #middleStr, digest => #tempString, hexdigest => #result);
-	    ELSE
-	        #result := '';
-	    END_IF;
-	END_REGION
+	    END_REGION
+	ELSE
+	    #result := '';
+	END_IF;
 END_FUNCTION
 
