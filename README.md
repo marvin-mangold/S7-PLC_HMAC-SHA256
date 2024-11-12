@@ -11,12 +11,12 @@ Parties with the secret key will hash the message again themselves, and if it is
 HMAC-SHA256 = SHA256( ( K XOR opad ) <concat> SHA256( ( K XOR ipad ) <concat> M ) )
 
 depending on the input "inputmode" different inputformats are used
-1   Message and Key are used as Bytes
-2   Message and Key are used as String
+-1   Message and Key are used as Bytes
+-2   Message and Key are used as String
 
 depending on the input "outputmode" different outputformats are available
-1   The digest ouput is the final value as bytes (Array [0..31] of Byte)
-2   The hexdigest output is the final hash value as a hexadecimal string (64 bytes string)
-3   Both 1 and 2
+-1   The digest ouput is the final value as bytes (Array [0..31] of Byte)
+-2   The hexdigest output is the final hash value as a hexadecimal string (64 bytes string)
+-3   Both 1 and 2
  
 ![HMAC-SHA256](https://github.com/user-attachments/assets/ae1047e6-189b-4f92-9a73-a58d6404cc68)
